@@ -24,5 +24,10 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+    {ok, { {one_for_one, 5, 10}, 
+	   [{tcp_server, {tcp_server, start_link, [8080]},
+	    permanent, brutal_kill, worker, [tcp_server]} 
+	   ]
+	 }
+    }.
 
