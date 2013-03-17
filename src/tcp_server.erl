@@ -57,5 +57,6 @@ terminate(normal, _State) ->
     ok.
 
 send(Sock, Data) ->
-    gen_tcp:send(Sock, Data).
+    NewData = "received: " ++ Data,
+    gen_tcp:send(Sock, NewData).
 
