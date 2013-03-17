@@ -17,7 +17,6 @@ all() ->
 init_per_suite(Config) ->
     application:load(tcp_server),
     application:start(tcp_server),
-    {ok, _} = tcp_server:start_link(),
     {ok, Sock} = connect(8080, [{active,false},{packet,2}]),
     [{socket, Sock} | Config].
 
