@@ -1,33 +1,21 @@
-
 -module(tcp_server_sup).
-
 -behaviour(supervisor).
 
-%% API
--export([start_link/0]).
-
-%% Supervisor callbacks
+-export([start_link/0, start_child/1, stop/1]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
-
-%% ===================================================================
-%% API functions
-%% ===================================================================
-
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, no_args).
 
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
+stop(Pid) ->
+    exit(Pid, shutdown).
 
-init([]) ->
-    {ok, { {one_for_one, 5, 10}, 
-	   [{tcp_server, {tcp_server, start_link, [8080]},
-	    permanent, brutal_kill, worker, [tcp_server]} 
-	   ]
-	 }
-    }.
+start_child(SupPid) ->
+    supervisor:start_child(SupPid, []).
+
+init(no_args) ->
+    Child = {tcp_server, {tcp_server, start_link, []},
+	      permanent, brutal_kill, worker, [tcp_server]},
+    RestartStrategy = {rest_for_one, 5, 2000},
+    {ok, {RestartStrategy, [Child]}}.
 

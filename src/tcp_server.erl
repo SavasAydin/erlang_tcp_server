@@ -1,62 +1,40 @@
 -module(tcp_server).
--behaviour(gen_server).
 
--export([start_link/1,
-	 stop/0
-	]).
--export([init/1, 
-	 handle_call/3,
-	 handle_cast/2,
-	 handle_info/2,
-	 code_change/3,
-	 terminate/2
-	]).
+-export([start_link/0, stop/0]).
+-export([acceptor/2, init/1]).
 
--define(TCP_OPTIONS, [{active, once}, {packet, 0}]).
-
--record(state, {lsocket,
-		asocket,
-		socket,
-		msg
-	       }). 
-
-start_link(Port) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Port], []).
+-define(PORT, 8080).
+-define(TCP_OPTIONS, [binary, {packet, 0}, {active, once}]).
+ 
+start_link() ->
+    proc_lib:start_link(?MODULE, init, [self()]).
 
 stop() ->
-    gen_server:cast(?MODULE, stop).
+     ?MODULE ! stop.
 
-init([Port]) ->
-    {ok, ListenSocket} = gen_tcp:listen(Port, ?TCP_OPTIONS),
-    gen_server:cast(self(), accept),
-    {ok, #state{lsocket = ListenSocket}}.
+init(Parent) ->
+    process_flag(trap_exit, true),
+    register(?MODULE, self()),
+    {ok, ListenSocket} = gen_tcp:listen(?PORT, ?TCP_OPTIONS),
+    proc_lib:init_ack(Parent, {ok, self()}),
+    acceptor(Parent, ListenSocket).
 
-handle_cast(accept, State) ->
-    {ok, AcceptSocket} = gen_tcp:accept(State#state.lsocket),
-    {noreply, #state{asocket = AcceptSocket}};
-handle_cast(stop, State) ->
-    {stop, normal, State}.
+acceptor(SupPid, ListenSocket) ->
+    {ok, Socket} = gen_tcp:accept(ListenSocket),
+    tcp_server_sup:start_child(SupPid),
+    loop(Socket).
 
-handle_call(_E, _From, State) ->
-    {reply, ok, State}.
+loop(Socket) ->
+    inet:setopts(Socket, [binary, {nodelay, true}, {active, once}]),
+    receive
+	{tcp, Socket, Data} ->    
+	    gen_tcp:send(Socket, Data),
+	    loop(Socket);
+	{tcp_closed, Socket} ->
+	    {error, disconnected};
+	stop -> 
+	    terminate(Socket, normal)
+    end.
 
-handle_info({tcp, Socket, Data}, State) ->
-    send(Socket, Data),
-    {noreply, State#state{socket = Socket, msg = Data}};
-handle_info({tcp_closed, _Socket, _}, State) ->
-    {stop, normal, State};
-handle_info({tcp_error, _Socket, _}, State) ->
-    {stop, normal, State};
-handle_info(_, State) ->
-    {noreply, State}.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
- 
-terminate(normal, _State) ->
-    ok.
-
-send(Sock, Data) ->
-    NewData = "received: " ++ Data,
-    gen_tcp:send(Sock, NewData).
-
+terminate(_, Reason) ->
+    exit(Reason).
