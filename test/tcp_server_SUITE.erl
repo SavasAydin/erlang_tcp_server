@@ -8,9 +8,6 @@
 	]).
 -export([receive_msg_send_ack/2]).
 
--define(TCP_OPTIONS, [binary, {reuseaddr, true},{packet, 0}, {active, false}]).
--define(PORT, 8080).
-
 all() ->
     [receive_msg_send_ack].
       
