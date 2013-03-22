@@ -1,14 +1,15 @@
 -module(tcp_server_sup).
 -behaviour(supervisor).
 
--export([start_link/0, start_child/1, stop/1]).
+-export([start_link/0, start_child/1, stop/0]).
 -export([init/1]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, no_args).
 
-stop(Pid) ->
-    exit(Pid, shutdown).
+stop() ->
+    exit(whereis(?MODULE), shutdown).
+
 
 start_child(SupPid) ->
     supervisor:start_child(SupPid, []).
